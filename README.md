@@ -2,5 +2,5 @@
 Cat card generate app
 
 ## Getting Started
-npm i
+npm i\
 npm start
