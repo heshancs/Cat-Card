@@ -1,69 +1,71 @@
-(async() => {
+import axios from "axios";
+import { joinImages } from "join-images";
+import argv from "minimist";
+process.argv.slice(2);
 
-    let axios = require('axios');
-    let argv = require('minimist')(process.argv.slice(2));
-    let {joinImages} = require('join-images');
+// define variables
+const {
+  width = 400,
+  height = 500,
+  color = "Pink",
+  size = 100,
+  catUrl = "https://cataas.com/cat/says/",
+  textArr = ["Hello", "You"],
+} = argv;
 
-    // define variables
-    let {
-        greeting = 'Hello', who = 'You',
-        width = 400, height = 500, color = 'Pink', size = 100,
-        catUrl = 'https://cataas.com/cat/'
-    } = argv;
+/**
+ * Returns a list of cats images with given text
+ * @param textArr a array of text for fetch cats card page
+ * @return a list of cats
+ */
+const fetchCatListFn = (textArr) => {
+  try {
+    const catPromiseArr = textArr.map((text) => {
+      return axios.get(catUrl + text, {
+        params: {
+          width,
+          height,
+          color,
+          s: size,
+        },
+        responseType: "arraybuffer",
+      });
+    });
+    const catData = Promise.all(catPromiseArr)
+    .then((cats) => {
+      return cats.map((cat) => {
+        console.log("Received response with status:" + cat.status);
+        return cat.data;
+      });
+    });
+    return catData;
+  } catch (e) {
+    console.log(e);
+  }
+};
 
-    // define request urls
-    let reqArr = [
-        `${catUrl}says/${greeting}?width=${width}&height=${height}&color${color}&s=${size}`,
-        `${catUrl}says/${who}?width=${width}&height=${height}&color${color}&s=${size}`
-    ];
+/**
+ * Returns save a joined image.
+ * @param catList A list of cats to join
+ * @param direction Direction of the merged image (vertical|horizontal) .
+ */
+const joinImagesFn = (catList, direction) => {
+  joinImages(catList, { direction })
+    .then((img) => {
+      img.toFile("cat-card.jpg");
+      console.log("The file was saved!");
+    })
+    .catch((e) => {
+      console.log(e);
+    });
+};
 
-    /**
-        * Returns a list of cats from the given url.
-        * @param reqArr a array of urls for fetch cats
-        * @return a list of cats
-    */
-    const fetchCatListFn = async(reqArr) => {
-
-        const catArr = [];
-        try {
-            for (let i = 0; i < reqArr.length; ++i) {
-                const res = await axios.get(reqArr[i], {responseType:'arraybuffer'});
-                catArr.push(res.data);
-                console.log('Received response with status:' + res.status);
-            }
-            return catArr;
-
-        } catch (e) {
-            console.log(e);
-        }
-    }
-
-    /**
-        * Returns save a joined image.
-        * @param catList A list of cats to join
-        * @param direction Direction of the merged image (vertical|horizontal) .
-    */
-    const joinImagesFn = async(catList, direction) => {
-        
-        await joinImages(catList, {direction})
-        .then((img) => {
-            img.toFile('cat-card.jpg');
-            console.log("The file was saved!");
-        })
-        .catch((e) => {
-            console.log(e);
-        })
-    }
-
-    // create the cat card
-    try {
-        const catList = await fetchCatListFn(reqArr);
-        await joinImagesFn(catList, 'horizontal');
-    } catch (e) {
-        console.log(e);
-    }
-
-})();
-
-
-
+// create the cat card
+try {
+  fetchCatListFn(textArr)
+  .then((catList) => {
+    joinImagesFn(catList, "horizontal");
+  });
+} catch (e) {
+  console.log(e);
+}
